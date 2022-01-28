@@ -6,6 +6,7 @@ from PyQt5.QtSql import QSqlDatabase, QSqlQuery, QSqlTableModel
 from PyQt5.QtGui import QDoubleValidator
 import sys
 import pid
+import ast
 
 class GUIApp:
     def __init__(self):
@@ -216,6 +217,36 @@ class GUIApp:
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
             return
+        if float(self.diode_l_textbox.text()) >= float(self.diode_h_textbox.text()):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+
+            msg.setText("Błąd! Lewy koniec przedziału napięcia liniowego ma wartość większą od prawego.")
+            msg.setInformativeText("Upewnij się, że poprawnie wpisałeś/aś wartości.")
+            msg.setWindowTitle("Komunikat o błędzie")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
+        if float(self.diode_l_textbox.text()) * float(self.diode_coeff_textbox.text()) + float(self.diode_offset_textbox.text()) != 0:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+
+            msg.setText("Błąd! Wartość natężenia dla początku przedziału liniowego nie jest równa 0!")
+            msg.setInformativeText("Upewnij się, że współczynnik a * początek przedziału = -współczynnik b.")
+            msg.setWindowTitle("Komunikat o błędzie")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
+        if float(self.diode_l_textbox.text()) < 0 or float(self.diode_h_textbox.text()) < 0 or float(self.diode_current_textbox()) <= 0:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+
+            msg.setText("Błąd! Wartości napięć nie mogą być ujemne i wartość natężenia musi być dodatnia!")
+            msg.setInformativeText("Upewnij się, że poprawnie wpisałeś/aś wartości.")
+            msg.setWindowTitle("Komunikat o błędzie")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
         exists = QSqlQuery()
         exists.prepare("SELECT * FROM diodes_tb WHERE diode_name=:new_name")
         exists.bindValue(":new_name", self.diode_name_textbox.text())
@@ -247,6 +278,16 @@ class GUIApp:
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
             return
+        if not self.parse_expression():
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+
+            msg.setText("Błąd! Niepoprawne wyrażenie.")
+            msg.setInformativeText("Upewnij się, że jako zmiennej używasz x i, że wyrażenia są poprawnie sformułowane.")
+            msg.setWindowTitle("Komunikat o błędzie")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
         exists = QSqlQuery()
         exists.prepare("SELECT * FROM environments_tb WHERE env_name=:new_name")
         exists.bindValue(":new_name", self.env_name_textbox.text())
@@ -265,6 +306,29 @@ class GUIApp:
             self.sql_model_2.select()
 
 
+    def parse_expression(self):
+        expr_iter = iter(self.env_expr_textbox.text())
+        for character in expr_iter:
+            if character.isalpha() and character != "x" and character != "(" and character != ")":
+                if character == "s":
+                    if next(expr_iter, None) == "i" and next(expr_iter, None) == "n" and next(expr_iter, None) == "(":
+                        continue
+                    else:
+                        return False
+                elif character == "c":
+                    if next(expr_iter, None) == "o" and next(expr_iter, None) == "s" and next(expr_iter, None) == "(":
+                        continue
+                    else:
+                        return False
+                else:
+                    return False
+        try:
+            ast.parse(self.env_expr_textbox.text())
+        except SyntaxError:
+            return False
+        return True
+
+
     def add_res(self):
         if self.res_name_textbox.text() == "" or self.res_val_textbox.text() == "":
             msg = QMessageBox()
@@ -272,6 +336,16 @@ class GUIApp:
 
             msg.setText("Błąd! Puste wartości.")
             msg.setInformativeText("Upewnij się, że pola nie są puste.")
+            msg.setWindowTitle("Komunikat o błędzie")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
+        if float(self.res_val_textbox.text()) <= 0:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Information)
+
+            msg.setText("Błąd! Niedodatnia wartość rezystancji.")
+            msg.setInformativeText("Upewnij się, że poprawnie wpisałeś/aś wartości.")
             msg.setWindowTitle("Komunikat o błędzie")
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec_()
